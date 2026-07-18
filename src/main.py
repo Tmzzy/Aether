@@ -10,6 +10,7 @@ import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import uvicorn
@@ -840,6 +841,14 @@ async def readiness_check(request: Request) -> Any:
     if warmup_error:
         detail["warmup_error"] = warmup_error
     raise HTTPException(status_code=503, detail=detail)
+
+
+# API 路由优先匹配，其他路径回退到 Vue SPA。FastAPI Cloud 部署前需要先构建前端。
+frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if frontend_dist.is_dir():
+    app.frontend("/", directory=frontend_dist)
+else:
+    logger.warning("未找到前端构建目录 {}，当前仅提供 API", frontend_dist)
 
 
 def main() -> Any:

@@ -3,9 +3,10 @@ import { ref } from 'vue'
 import {
   Server,
   Key,
-  Container,
+  Cloud,
   Code,
-  Shield,
+  Database,
+  GitBranch,
   Monitor,
   Check,
   Copy,
@@ -24,59 +25,52 @@ const productionSteps = [
     icon: Code
   },
   {
-    title: '配置环境变量',
-    note: '生成密钥并填入 .env',
-    code: 'cp .env.example .env\npython generate_keys.py',
+    title: '安装依赖',
+    note: '使用锁文件保证构建一致',
+    code: 'uv sync --frozen\nnpm --prefix frontend ci',
     icon: Key
   },
   {
-    title: '部署 / 更新',
-    note: '自动执行数据库迁移',
-    code: 'docker compose pull && docker compose up -d',
-    icon: Container
+    title: '初始化数据库',
+    note: '使用托管 PostgreSQL 的连接地址',
+    code: "DATABASE_URL='postgresql://...' uv run alembic upgrade head",
+    icon: Database
   },
   {
-    title: '升级前备份',
-    note: '可选',
-    code: 'docker compose exec postgres pg_dump -U postgres aether | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz',
-    icon: Shield,
-    optional: true
+    title: '构建并部署',
+    note: 'FastAPI Cloud 同时提供 API 与前端',
+    code: 'npm --prefix frontend run build\nuv run fastapi deploy',
+    icon: Cloud
   }
 ]
 
-const localBuildSteps = [
+const ciSteps = [
   {
-    title: '克隆代码',
-    code: 'git clone https://github.com/fawney19/Aether.git\ncd Aether',
-    icon: Code
-  },
-  {
-    title: '配置环境变量',
-    note: '生成密钥并填入 .env',
-    code: 'cp .env.example .env\npython generate_keys.py',
+    title: '创建部署令牌',
+    note: '在 FastAPI Cloud 控制台创建',
+    code: 'FASTAPI_CLOUD_TOKEN\nFASTAPI_CLOUD_APP_ID',
     icon: Key
   },
   {
-    title: '构建',
-    note: '自动构建、启动、迁移',
-    code: './deploy.sh',
-    icon: Container
+    title: '配置数据库 Secret',
+    note: '供 CI 执行 Alembic 迁移',
+    code: 'DATABASE_URL=postgresql://...',
+    icon: Database
   },
   {
-    title: '更新',
-    note: '需要拉取最新代码',
-    code: 'git pull origin master',
-    icon: Code,
-    optional: true
+    title: '触发工作流',
+    note: '构建前端、迁移数据库并完成部署',
+    code: 'gh workflow run deploy-fastapi-cloud.yml -f run_migrations=true',
+    icon: GitBranch
   }
 ]
 
 const developmentSteps = [
   {
-    title: '启动依赖',
-    note: 'PostgreSQL + Redis',
-    code: 'docker compose -f docker-compose.build.yml up -d postgres redis',
-    icon: Container
+    title: '配置依赖',
+    note: '填写本地 PostgreSQL 与 Redis 地址',
+    code: 'cp .env.example .env\nuv run alembic upgrade head',
+    icon: Database
   },
   {
     title: '后端',
@@ -87,7 +81,7 @@ const developmentSteps = [
   {
     title: '前端',
     note: '自动代理到 8084',
-    code: 'cd frontend && npm install && npm run dev',
+    code: 'npm --prefix frontend ci\nnpm --prefix frontend run dev',
     icon: Monitor
   }
 ]
@@ -132,8 +126,8 @@ function copyStep(stepId: string, code: string) {
         <div class="flex border-b border-[#e5e4df] dark:border-[rgba(227,224,211,0.12)] px-5">
           <button
             v-for="(tab, idx) in [
-              { icon: Container, label: 'Docker 预构建镜像' },
-              { icon: Code, label: '本地代码构建' },
+              { icon: Cloud, label: 'FastAPI Cloud' },
+              { icon: GitBranch, label: 'GitHub Actions' },
               { icon: Monitor, label: '本地开发' }
             ]"
             :key="idx"
@@ -206,7 +200,7 @@ function copyStep(stepId: string, code: string) {
           class="p-5 space-y-3"
         >
           <div
-            v-for="(step, idx) in localBuildSteps"
+            v-for="(step, idx) in ciSteps"
             :key="idx"
             class="group rounded-xl border border-[#e5e4df] dark:border-[rgba(227,224,211,0.12)] overflow-hidden transition-colors"
             :class="step.optional ? 'border-dashed opacity-80' : ''"

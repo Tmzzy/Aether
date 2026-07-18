@@ -153,7 +153,7 @@ def test_hidden_user_and_public_provider_routes_return_404() -> None:
     assert client.get("/v1/providers/provider-a").status_code == 404
     assert client.get("/v1/test-connection").status_code == 404
 
-    root_payload = client.get("/").json()
+    root_payload = client.get("/api").json()
     assert "current_provider" not in root_payload
     assert "available_providers" not in root_payload
     assert "providers" not in root_payload["endpoints"]

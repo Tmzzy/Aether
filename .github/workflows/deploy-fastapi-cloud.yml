@@ -1,0 +1,58 @@
+name: Deploy to FastAPI Cloud
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_migrations:
+        description: Run Alembic migrations before deployment
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: fastapi-cloud-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        run: uv sync --frozen --no-dev
+
+      - name: Run database migrations
+        if: inputs.run_migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run --frozen --no-dev alembic upgrade head
+
+      - name: Deploy
+        env:
+          FASTAPI_CLOUD_APP_ID: ${{ secrets.FASTAPI_CLOUD_APP_ID }}
+          FASTAPI_CLOUD_TOKEN: ${{ secrets.FASTAPI_CLOUD_TOKEN }}
+        run: uv run --frozen --no-dev fastapi deploy

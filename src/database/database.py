@@ -305,7 +305,7 @@ def get_db_url() -> str:
 def init_db() -> None:
     """初始化数据库
 
-    注意：数据库表结构由 Alembic 管理，部署时请运行 ./migrate.sh
+    注意：数据库表结构由 Alembic 管理，部署前请运行 `alembic upgrade head`。
     """
     import sys
 
@@ -343,8 +343,6 @@ def init_db() -> None:
         else:
             db_info = db_url
 
-        import os
-
         # 直接打印到 stderr，确保消息显示
         print("", file=sys.stderr)
         print("=" * 60, file=sys.stderr)
@@ -358,12 +356,10 @@ def init_db() -> None:
         print("  2. 数据库连接配置是否正确 (DATABASE_URL)", file=sys.stderr)
         print("  3. 数据库用户名和密码是否正确", file=sys.stderr)
         print("", file=sys.stderr)
-        print("如果使用 Docker，请先运行:", file=sys.stderr)
-        print("  docker compose -f docker-compose.build.yml up -d postgres redis", file=sys.stderr)
+        print("请确认托管 PostgreSQL 正常运行，并检查 DATABASE_URL。", file=sys.stderr)
         print("", file=sys.stderr)
         print("=" * 60, file=sys.stderr)
-        # 使用 os._exit 直接退出，避免 uvicorn 捕获并打印堆栈
-        os._exit(1)
+        raise RuntimeError(f"无法连接数据库: {db_info}") from e
 
     except Exception as e:
         logger.error(f"数据库初始化失败: {e}")

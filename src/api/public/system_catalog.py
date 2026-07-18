@@ -82,7 +82,7 @@ async def health_check() -> Any:
     }
 
 
-@router.get("/")
+@router.get("/api")
 async def root() -> Any:
     """Root endpoint - 服务信息概览"""
     return {

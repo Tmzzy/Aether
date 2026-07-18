@@ -31,16 +31,10 @@ from src.models.database import Base
 # Alembic Config 对象
 config = context.config
 
-# 从环境变量获取数据库 URL
-# 优先使用 DATABASE_URL，否则从 DB_PASSWORD 自动构建（与 docker compose 保持一致）
+# 从环境变量获取数据库 URL，与应用运行时保持一致。
 database_url = os.getenv("DATABASE_URL")
 if not database_url:
-    db_password = os.getenv("DB_PASSWORD", "")
-    db_host = os.getenv("DB_HOST", "localhost")
-    db_port = os.getenv("DB_PORT", "5432")
-    db_name = os.getenv("DB_NAME", "aether")
-    db_user = os.getenv("DB_USER", "postgres")
-    database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    raise RuntimeError("DATABASE_URL environment variable is required for database migrations")
 config.set_main_option("sqlalchemy.url", database_url)
 
 # 配置日志

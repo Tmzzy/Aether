@@ -54,7 +54,6 @@ export default defineConfig(({ mode }) => ({
     proxy: {
       // 只代理真正的 API 路径
       // 注意：本地开发时后端默认运行在 8084 端口（见 src/config/settings.py）
-      // 如果使用 Docker，则通过 APP_PORT 环境变量映射（默认 80）
       '/api/': {
         target: 'http://localhost:8084',  // 本地开发端口
         changeOrigin: true,

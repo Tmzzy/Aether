@@ -21,30 +21,27 @@ classifiers = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi[standard]>=0.128.0",
+    "fastapi[standard]>=0.139.2",
     "uvicorn>=0.40.0",
-    "gunicorn>=24.1.1",
     "pydantic>=2.12.5",
     "python-dotenv>=1.2.1",
     "openai>=2.16.0",
     "httpx[socks,http2]>=0.28.1",
     "brotli>=1.1.0",
-    "sqlalchemy>=2.0.46",
-    "alembic>=1.18.3",
+    "sqlalchemy>=2.0.51",
+    "alembic>=1.18.5",
     "bcrypt>=5.0.0",
     "pyjwt>=2.10.1",
     "certifi>=2026.1.4",
     "cryptography>=46.0.4",
-    "psycopg2-binary>=2.9.11",
-    "asyncpg>=0.31.0",
-    "aiosqlite>=0.22.1",
+    "psycopg2-binary>=2.9.12",
     "loguru>=0.7.3",
     "tiktoken>=0.12.0",
     "regex>=2026.1.15", # 支持超时的正则库，用于 ReDoS 防护
     "aiofiles>=25.1.0",
     "aiohttp>=3.13.3",
     "aiosmtplib>=5.1.0",
-    "redis>=7.1.0",
+    "redis>=8.0.1",
     "prometheus-client>=0.24.1",
     "psutil>=5.9.8",
     "apscheduler>=3.11.2",
@@ -71,8 +68,11 @@ Issues = "https://github.com/fawney19/Aether/issues"
 [project.scripts]
 aether = "src.main:main"
 
-[tool.uv]
-dev-dependencies = [
+[tool.fastapi]
+entrypoint = "src.main:app"
+
+[dependency-groups]
+dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
@@ -99,6 +99,9 @@ packages = ["src"]
 
 [tool.hatch.version]
 source = "vcs"
+
+[tool.hatch.version.raw-options]
+fallback_version = "0.0.0"
 
 [tool.hatch.build.hooks.vcs]
 version-file = "src/_version.py"

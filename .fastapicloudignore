@@ -1,0 +1,18 @@
+# FastAPI Cloud 只上传 Python 运行时和已经构建的前端。
+.github/
+aether-hub/
+aether-proxy/
+docs/
+scripts/
+tests/
+htmlcov/
+
+# 前端源码在本地或 CI 中构建，云端只需要构建产物。
+frontend/*
+!frontend/dist/
+!frontend/dist/**
+
+# 即使它们未被 Git 忽略，也不要上传本地工具产物。
+.coverage
+.pytest_cache/
+logs/

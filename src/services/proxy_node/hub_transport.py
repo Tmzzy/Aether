@@ -59,7 +59,7 @@ class HubTunnelTransport(httpx.AsyncBaseTransport):
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         config = get_hub_config()
         if not config.enabled:
-            raise httpx.ConnectError("hub local relay is unavailable outside docker runtime")
+            raise httpx.ConnectError("hub relay is unavailable; configure TUNNEL_HUB_URL")
 
         headers: dict[str, str] = {}
         for key, value in request.headers.raw:

@@ -6,14 +6,6 @@ Tunnel 模式下代理节点**无需对外监听端口**，仅需出站连接到
 
 ## 安装
 
-### Docker Compose 部署
-
-```bash
-cp .env.example .env
-# 编辑 .env 填入 AETHER_PROXY_AETHER_URL 和 AETHER_PROXY_MANAGEMENT_TOKEN
-docker compose up -d
-```
-
 ### 下载预编译二进制
 
 <!-- DOWNLOAD_TABLE_START -->
@@ -145,7 +137,6 @@ node_name = "jp-proxy-02"
 
 推送 `proxy-v*` 格式的 tag，GitHub Actions 会自动：
 - 编译所有平台二进制并发布到 Releases
-- 构建 Docker 镜像并推送到 GHCR 和 Docker Hub
 - 更新 README 中的下载链接表格
 
 ```bash

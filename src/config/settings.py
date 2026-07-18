@@ -27,9 +27,7 @@ class Config:
         self.host = os.getenv("HOST", "0.0.0.0")
         self.port = int(os.getenv("PORT", "8084"))
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
-        self.worker_processes = int(
-            os.getenv("WEB_CONCURRENCY", os.getenv("GUNICORN_WORKERS", "1"))
-        )
+        self.worker_processes = int(os.getenv("WEB_CONCURRENCY", "1"))
 
         # PostgreSQL 连接池计算相关配置
         # PG_MAX_CONNECTIONS: PostgreSQL 的 max_connections 设置（默认 100）
@@ -48,14 +46,8 @@ class Config:
         # 加密密钥配置（独立于JWT密钥，用于敏感数据加密）
         self.encryption_key = os.getenv("ENCRYPTION_KEY", None)
 
-        # 环境配置 - 智能检测
-        # Docker 部署默认为生产环境，本地开发默认为开发环境
-        is_docker = (
-            os.path.exists("/.dockerenv")
-            or os.environ.get("DOCKER_CONTAINER", "false").lower() == "true"
-        )
-        default_env = "production" if is_docker else "development"
-        self.environment = os.getenv("ENVIRONMENT", default_env)
+        # 云平台不会提供可靠的容器运行时标识，生产环境必须显式声明。
+        self.environment = os.getenv("ENVIRONMENT", "development").strip().lower()
 
         # Redis 依赖策略（生产默认必需，开发默认可选，可通过 REDIS_REQUIRED 覆盖）
         redis_required_env = os.getenv("REDIS_REQUIRED")

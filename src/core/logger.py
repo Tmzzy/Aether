@@ -34,15 +34,15 @@ from loguru import logger
 # 环境检测
 # ============================================================================
 
-IS_DOCKER = (
-    os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER", "false").lower() == "true"
-)
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").strip().lower() == "production"
 
 # 日志级别: 默认开发环境 DEBUG, 生产环境 INFO
-LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG" if not IS_DOCKER else "INFO").upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO" if IS_PRODUCTION else "DEBUG").upper()
 
 # 是否禁用文件日志 (用于测试或特殊场景)
-DISABLE_FILE_LOG = os.getenv("LOG_DISABLE_FILE", "false").lower() == "true"
+DISABLE_FILE_LOG = os.getenv(
+    "LOG_DISABLE_FILE", "true" if IS_PRODUCTION else "false"
+).lower() == "true"
 
 # 项目根目录
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -70,7 +70,7 @@ def _log_filter(record: dict) -> bool:  # type: ignore[type-arg]
     return "watchfiles" not in record["name"]
 
 
-if IS_DOCKER:
+if IS_PRODUCTION:
     # 生产环境：禁用 backtrace 和 diagnose，减少日志噪音
     logger.add(
         sys.stdout,
@@ -109,7 +109,7 @@ if not DISABLE_FILE_LOG:
     }
 
     # 生产环境禁用详细堆栈
-    if IS_DOCKER:
+    if IS_PRODUCTION:
         file_log_config["backtrace"] = False
         file_log_config["diagnose"] = False
 

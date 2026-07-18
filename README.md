@@ -30,65 +30,74 @@ Aether 是一个自托管的 AI API 网关，为团队和个人提供多租户�
   </picture>
 </p>
 
-页面预览: https://fawney19.github.io/Aether/
-
 ## 部署
 
-### Docker Compose（推荐：预构建镜像）
+### FastAPI Cloud
+
+项目已按 [FastAPI Cloud 官方部署方式](https://fastapi.tiangolo.com/zh/deployment/fastapicloud/) 配置，Python 入口为 `src.main:app`。同一次部署会提供 API 和 Vue 前端。
+
+数据库层已在 PostgreSQL 18.4 与 Redis 8.6.4 上完成迁移、启动、读写、队列及分布式锁验证，可兼容 PostgreSQL 18.x 和 Redis 8.6.x。应用实际使用 SQLAlchemy + `psycopg2` 访问 PostgreSQL，并通过 `redis.asyncio` 访问 Redis。
+
+先在 FastAPI Cloud 控制台创建应用，准备托管 PostgreSQL 与 Redis。可直接使用控制台中的 Neon 和 Redis Cloud 集成，然后在应用的 **Environment Variables** 中配置下文列出的变量。
 
 ```bash
-# 1. 克隆代码
 git clone https://github.com/fawney19/Aether.git
 cd Aether
 
-# 2. 配置环境变量
-cp .env.example .env
-python generate_keys.py  # 生成密钥, 并将生成的密钥填入 .env
+# 安装锁定的 Python 依赖与前端依赖
+uv sync --frozen
+npm --prefix frontend ci
 
-# 3. 部署 / 更新（自动执行数据库迁移）
-docker compose pull && docker compose up -d
+# 登录并关联控制台中已经配置好的应用
+uv run fastapi login
+uv run fastapi cloud link
 
-# 4. 升级前备份 (可选)
-docker compose exec postgres pg_dump -U postgres aether | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+# 首次部署前初始化数据库；后续仅在包含迁移时执行
+DATABASE_URL='postgresql://...' uv run alembic upgrade head
+
+# FastAPI Cloud 不代建前端，每次部署前先生成 frontend/dist
+npm --prefix frontend run build
+uv run fastapi deploy
 ```
 
-### Docker Compose（本地构建镜像）
+`fastapi deploy` 会自动读取 `pyproject.toml`、`uv.lock` 与 `.python-version`，上传时 `.fastapicloudignore` 会包含刚生成的 `frontend/dist` 并排除测试、文档和 Rust 子项目。
 
-```bash
-# 1. 克隆代码
-git clone https://github.com/fawney19/Aether.git
-cd Aether
+也可以在 GitHub Actions 中手动运行 **Deploy to FastAPI Cloud**。关联应用后执行 `uv run fastapi cloud setup-ci --secrets-only`，CLI 会配置前两个 Repository Secrets；数据库 Secret 需要手动添加：
 
-# 2. 配置环境变量
-cp .env.example .env
-python generate_keys.py  # 生成密钥, 并将生成的密钥填入 .env
+| Secret | 用途 |
+|------|------|
+| `FASTAPI_CLOUD_TOKEN` | FastAPI Cloud 部署令牌 |
+| `FASTAPI_CLOUD_APP_ID` | 目标应用 ID |
+| `DATABASE_URL` | CI 执行 Alembic 迁移时使用 |
 
-# 3. 部署 / 更新（自动构建、启动、迁移）
-git pull
-./deploy.sh
-```
+工作流默认在部署前迁移数据库。若本次迁移包含删除或重命名，应按照 FastAPI Cloud 的零停机原则分阶段操作，并在触发工作流时关闭自动迁移。
 
 ### 本地开发
 
-```bash
-# 启动依赖
-docker compose -f docker-compose.build.yml up -d postgres redis
+本地需要可访问的 PostgreSQL 和 Redis。将 `.env.example` 复制为 `.env` 后填写连接地址与密钥：
 
-# 后端
-uv sync
+```bash
+cp .env.example .env
+uv sync --frozen
+uv run alembic upgrade head
+
+# 后端热重载
 ./dev.sh
 
-# 前端
-cd frontend && npm install && npm run dev
+# 另一个终端运行前端
+npm --prefix frontend ci
+npm --prefix frontend run dev
 ```
 
 ## Aether Proxy (可选)
 
 Aether Proxy 是配套的正向代理节点，部署在海外 VPS 上，为墙内的 Aether 实例中转 API 流量。或者部署在其他服务器为指定的提供商、账号、Key使用不同的节点访问。支持 TUI 向导一键配置、systemd 服务管理、TLS 加密、DNS 缓存及连接池调优。
 
-- Docker Compose 部署或下载预编译二进制直接运行
+- 下载预编译二进制直接运行
 - 通过 `aether-proxy setup` 完成交互式配置，自动注册为系统服务
 - 详细文档见 [aether-proxy/README.md](aether-proxy/README.md)
+
+FastAPI Cloud 不会启动本地 Hub sidecar，因此 Tunnel 模式默认关闭；使用该能力时需单独部署 Hub 并配置 `TUNNEL_HUB_URL`。
 
 ## 环境变量
 
@@ -96,8 +105,9 @@ Aether Proxy 是配套的正向代理节点，部署在海外 VPS 上，为墙�
 
 | 变量 | 说明 |
 |------|------|
-| `DB_PASSWORD` | PostgreSQL 数据库密码 |
-| `REDIS_PASSWORD` | Redis 密码 |
+| `ENVIRONMENT` | FastAPI Cloud 设置为 `production` |
+| `DATABASE_URL` | 托管 PostgreSQL 连接地址 |
+| `REDIS_URL` | 托管 Redis 连接地址 |
 | `JWT_SECRET_KEY` | JWT 签名密钥（使用 `generate_keys.py` 生成） |
 | `ENCRYPTION_KEY` | API Key 加密密钥（更换后需重新配置 Provider Key） |
 | `ADMIN_EMAIL` | 初始管理员邮箱 |
@@ -108,12 +118,12 @@ Aether Proxy 是配套的正向代理节点，部署在海外 VPS 上，为墙�
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `APP_PORT` | 8084 | 应用端口 |
+| `PORT` | 8084 | 本地端口；FastAPI Cloud 自动提供 |
 | `API_KEY_PREFIX` | sk | API Key 前缀 |
 | `LOG_LEVEL` | INFO | 日志级别 (DEBUG/INFO/WARNING/ERROR) |
-| `GUNICORN_WORKERS` | 2 | Gunicorn 工作进程数 |
-| `DB_PORT` | 5432 | PostgreSQL 端口 |
-| `REDIS_PORT` | 6379 | Redis 端口 |
+| `LOG_DISABLE_FILE` | 生产环境为 true | 云端仅输出 stdout 日志 |
+| `DOCS_ENABLED` | 生产环境为 false | 是否开放 `/docs` 与 OpenAPI 文档 |
+| `CORS_ORIGINS` | 空 | 独立部署前端时允许的来源；同源部署无需设置 |
 
 ## Q&A
 
@@ -129,40 +139,7 @@ Aether Proxy 是配套的正向代理节点，部署在海外 VPS 上，为墙�
 
 ### Q: 更新出问题如何回滚？
 
-**有备份的情况（推荐）：**
-
-```bash
-# 1. 停止应用
-docker compose stop app
-
-# 2. 恢复数据库（先清空再导入）
-docker compose exec -T postgres psql -U postgres -c "DROP DATABASE aether; CREATE DATABASE aether;"
-gunzip < backup_xxx.sql.gz | docker compose exec -T postgres psql -U postgres -d aether
-
-# 3. 拉取旧版本镜像并重启
-#    方式一：使用具体版本 tag（如果有发布版本号）
-#    将 docker-compose.yml 中 image 从 ghcr.io/fawney19/aether:latest 改为指定版本
-#    方式二：使用之前记录的镜像 digest
-#    将 image 改为 ghcr.io/fawney19/aether@sha256:xxxxx
-docker compose up -d app
-```
-
-> 可以在升级前通过 `docker inspect ghcr.io/fawney19/aether:latest --format '{{index .RepoDigests 0}}'` 记录当前镜像 digest，方便回滚时使用。
-
-**没有备份的情况：**
-
-```bash
-# 1. 用当前容器回退数据库迁移（回退 1 步，按需调整数字）
-docker compose exec app alembic downgrade -1
-
-# 2. 查看回退后的版本确认正确
-docker compose exec app alembic current
-
-# 3. 切回旧镜像并重启（同上方式修改 docker-compose.yml 中的 image）
-docker compose up -d app
-```
-
-> 注意：没有备份的回滚依赖 alembic downgrade，如果迁移涉及不可逆的数据变更（如删除列），可能无法完全恢复数据。因此强烈建议升级前备份。
+在 FastAPI Cloud 控制台选择最后一次成功部署。数据库变更不会随应用部署自动回滚，因此执行迁移前应使用数据库服务商的备份或时间点恢复能力。涉及删除字段的迁移应先部署不再读取该字段的代码，再单独执行迁移。
 
 ---
 

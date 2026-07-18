@@ -1,54 +1,37 @@
 # 快速开始
 ## 部署
 
-选择适合你的部署方式开始
+生产环境使用 FastAPI Cloud，PostgreSQL 与 Redis 使用可公开访问的托管服务。
 
-### 1. 预构建镜像 (Docker Compose)
+### 1. FastAPI Cloud
 ```markdown
-# 1. 克隆代码
 git clone https://github.com/fawney19/Aether.git
 cd Aether
 
-# 2. 配置环境变量
-cp .env.example .env
-python generate_keys.py  # 生成密钥, 并将生成的密钥填入 .env
+uv sync --frozen
+npm --prefix frontend ci
 
-# 3. 部署 / 更新（自动执行数据库迁移）
-docker compose pull && docker compose up -d
+DATABASE_URL='postgresql://...' uv run alembic upgrade head
 
-# 4. 升级前备份
-docker compose exec postgres pg_dump -U postgres aether | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+npm --prefix frontend run build
+uv run fastapi deploy
 ```
 
-### 2. 本地代码构建镜像 (Docker Compose)
-```markdown
-# 1. 克隆代码
-git clone https://github.com/fawney19/Aether.git
-cd Aether
+FastAPI Cloud 控制台中必须配置 `ENVIRONMENT=production`、`DATABASE_URL`、`REDIS_URL`、管理员账号及安全密钥。项目根目录的 `pyproject.toml` 已声明 `src.main:app`，`.fastapicloudignore` 会上传前端构建产物。
 
-# 2. 配置环境变量
+### 2. 本地开发
+需要 uv、Node.js，以及可访问的 PostgreSQL 和 Redis。
+```markdown
 cp .env.example .env
-python generate_keys.py  # 生成密钥, 并将生成的密钥填入 .env
-
-# 3. 构建（自动构建、启动、迁移）
-./deploy.sh
-
-# 4. 更新需要拉取最新代码
-git pull origin master
-```
-
-### 3. 本地开发
-依赖 Docker、uv、nodejs
-```markdown
-# 启动数据库
-docker compose -f docker-compose.build.yml up -d postgres redis
+uv sync --frozen
+uv run alembic upgrade head
 
 # 后端
-uv sync
 ./dev.sh
 
 # 前端
-cd frontend && npm install && npm run dev
+npm --prefix frontend ci
+npm --prefix frontend run dev
 ```
 
 ## 配置流程
